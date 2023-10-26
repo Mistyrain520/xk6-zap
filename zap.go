@@ -1,8 +1,6 @@
 package zaplogger
 
 import (
-	"sync"
-
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -17,7 +15,6 @@ func init() {
 type RootModule struct{}
 type ZapLogger struct {
 	vu modules.VU
-	mu sync.Mutex
 }
 
 var (

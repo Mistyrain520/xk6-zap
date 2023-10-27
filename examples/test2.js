@@ -5,7 +5,7 @@ const mylogger = zaplogger.initLogger("./test.log")
 
 export default function () { 
   mylogger.infow("msg", "key", "gagga")
-  mylogger.infow("key", "gagga", "key1", "values1")
+  mylogger.infow("msg", "key1", "values1")
   sleep(5)
   }
 export function teardown() {

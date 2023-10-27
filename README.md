@@ -83,3 +83,7 @@ Then you can see that a file is generated locally
 {"level":"INFO","ts":"2023-10-26T23:44:21.874+0800","msg":"msg","key":"gagga","key1":"values1"}
 
 ```
+
+
+## TUDO
+- [ ] 文件不存在的时候，并发写入有问题；文件如果已经存在了，就没问题。奇怪

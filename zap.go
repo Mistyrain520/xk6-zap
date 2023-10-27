@@ -1,9 +1,6 @@
 package zaplogger
 
 import (
-	"os"
-	"sync"
-
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -18,20 +15,6 @@ func init() {
 type RootModule struct{}
 type ZapLogger struct {
 	vu modules.VU
-}
-
-var (
-	rw sync.RWMutex
-)
-
-type safeWriter struct {
-	w zapcore.WriteSyncer
-}
-
-func (s *safeWriter) Write(p []byte) (n int, err error) {
-	rw.Lock()
-	defer rw.Unlock()
-	return s.w.Write(p)
 }
 
 var (
@@ -60,11 +43,10 @@ func (z *ZapLogger) InitLogger(path string, args ...int) *zap.SugaredLogger {
 		MaxBackups: args[1],
 		MaxAge:     args[2],
 	})
-	safeW := &safeWriter{w: writeSyncer}
 	encoder := getEncoder()
-	core := zapcore.NewCore(encoder, safeW, zapcore.NewMultiWriteSyncer(writeSyncer, zapcore.AddSync(os.Stdout)), zapcore.DebugLevel)
+	// core := zapcore.NewCore(encoder, safeW, zapcore.NewMultiWriteSyncer(writeSyncer, zapcore.AddSync(os.Stdout)), zapcore.DebugLevel)
 	//不在控制台输出，去掉zapcore.AddSync(os.Stdout)
-	// core := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(writeSyncer), zapcore.DebugLevel)
+	core := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(writeSyncer), zapcore.DebugLevel)
 
 	logger := zap.New(core)
 	sugarLogger := logger.Sugar()

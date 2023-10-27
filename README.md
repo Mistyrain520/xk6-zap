@@ -23,7 +23,7 @@ Then:
 
 2. Build the binary:
   ```shell
-  xk6 build --with github.com/Mistyrain520/xk6-zap
+  xk6 build --with github.com/Mistyrain520/xk6-zap@latest
   ```
 
 

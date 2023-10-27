@@ -29,13 +29,19 @@ func (*RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 func (zaplogger *ZapLogger) Exports() modules.Exports {
 	return modules.Exports{Default: zaplogger}
 }
-func (z *ZapLogger) InitLogger(path string) *zap.SugaredLogger {
-	// file, _ := os.Create(path)
+func (z *ZapLogger) InitLogger(path string, args ...int) *zap.SugaredLogger {
+	// MaxSize:    500, // megabytes
+	// MaxBackups: 3,
+	// MaxAge:     28, // days
+	defaultArgs := []int{500, 3, 28}
+	for i := len(args); i < len(defaultArgs); i++ {
+		args = append(args, defaultArgs[i])
+	}
 	writeSyncer := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   path,
-		MaxSize:    500, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28, // days
+		MaxSize:    args[0],
+		MaxBackups: args[1],
+		MaxAge:     args[2],
 	})
 	encoder := getEncoder()
 	// core := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(writeSyncer, zapcore.AddSync(os.Stdout)), zapcore.DebugLevel)
@@ -46,29 +52,9 @@ func (z *ZapLogger) InitLogger(path string) *zap.SugaredLogger {
 	sugarLogger := logger.Sugar()
 	return sugarLogger
 }
-
-//	func (z *ZapLogger) Sync(sugar *zap.SugaredLogger) {
-//		sugar.Sync()
-//	}
-
-//	func (z *ZapLogger) Debugw(sugar *zap.SugaredLogger, msg string, keysAndValues ...interface{}) {
-//		sugar.Debugw(msg, keysAndValues...)
-//	}
-//
-//	func (z *ZapLogger) Warnw(sugar *zap.SugaredLogger, msg string, keysAndValues ...interface{}) {
-//		sugar.Warnw(msg, keysAndValues...)
-//	}
-//
-//	func (z *ZapLogger) Errorw(sugar *zap.SugaredLogger, msg string, keysAndValues ...interface{}) {
-//		sugar.Errorw(msg, keysAndValues...)
-//	}
-//
-//	func (z *ZapLogger) Fatalw(sugar *zap.SugaredLogger, msg string, keysAndValues ...interface{}) {
-//		sugar.Fatalw(msg, keysAndValues...)
-//	}
 func getEncoder() zapcore.Encoder {
 	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder //指定时间格式
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	encoder := zapcore.NewJSONEncoder(encoderConfig)
 	return encoder

@@ -22,6 +22,23 @@ var (
 	_ modules.Instance = &ZapLogger{}
 )
 
+type DynamicObject map[string]interface{}
+
+func (d DynamicObject) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	for k, v := range d {
+		switch v := v.(type) {
+		case int:
+			enc.AddInt(k, v)
+		case float64:
+			enc.AddFloat64(k, v)
+		case string:
+			enc.AddString(k, v)
+		default:
+			enc.AddReflected(k, v)
+		}
+	}
+	return nil
+}
 func (*RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	return &ZapLogger{vu: vu}
 }
@@ -58,4 +75,20 @@ func getEncoder() zapcore.Encoder {
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	encoder := zapcore.NewJSONEncoder(encoderConfig)
 	return encoder
+}
+func (z *ZapLogger) CreateDynamicObject(args ...interface{}) DynamicObject {
+	obj := make(DynamicObject)
+	for i := 0; i < len(args); i += 2 {
+		key, _ := args[i].(string)
+		obj[key] = args[i+1]
+	}
+	return obj
+}
+func (z *ZapLogger) ZapObject(key string, args ...interface{}) zapcore.Field {
+	obj := make(DynamicObject)
+	for i := 0; i < len(args); i += 2 {
+		key, _ := args[i].(string)
+		obj[key] = args[i+1]
+	}
+	return zap.Object(key, obj)
 }

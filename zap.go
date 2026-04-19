@@ -1,6 +1,7 @@
 package zaplogger
 
 import (
+	"os"
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -46,7 +47,7 @@ func (*RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 func (zaplogger *ZapLogger) Exports() modules.Exports {
 	return modules.Exports{Default: zaplogger}
 }
-func (z *ZapLogger) InitLogger(path string, args ...int) *zap.SugaredLogger {
+func (z *ZapLogger) InitLogger(path string, overwrite bool, args ...int) *zap.SugaredLogger {
 	// MaxSize:    500, // megabytes
 	// MaxBackups: 3,
 	// MaxAge:     28, // days
@@ -54,6 +55,16 @@ func (z *ZapLogger) InitLogger(path string, args ...int) *zap.SugaredLogger {
 	for i := len(args); i < len(defaultArgs); i++ {
 		args = append(args, defaultArgs[i])
 	}
+
+	// 如果 overwrite 为 true，则清空文件内容
+	if overwrite {
+		err := os.Truncate(path, 0)
+		if err != nil && !os.IsNotExist(err) {
+			// 如果文件不存在，lumberjack 会自动创建，所以忽略该错误
+			// 其他错误可以选择记录日志或处理
+		}
+	}
+
 	writeSyncer := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   path,
 		MaxSize:    args[0],

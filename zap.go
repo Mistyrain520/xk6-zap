@@ -2,7 +2,8 @@ package zaplogger
 
 import (
 	"os"
-	"go.k6.io/k6/js/modules"
+
+	"go.k6.io/k6/v2/js/modules"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"

@@ -1,4 +1,4 @@
-module github.com/Mistyrain520/xk6-zap
+module github.com/Mistyrain520/xk6-zap/v2
 
 go 1.25.0
 

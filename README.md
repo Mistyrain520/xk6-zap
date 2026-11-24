@@ -5,6 +5,12 @@ This is a [k6](https://github.com/grafana/k6) extension using the
 
 Support logging to file.
 
+## v2.0.2
+
+- Fixed concurrent writes when multiple VUs create the same log file.
+- Fixed concurrent log rotation causing split logs or Windows rename conflicts.
+- Added `closeLogger()` and `closeAll()` for releasing log file handles.
+
 
 ## Build
 
@@ -23,7 +29,7 @@ Then:
 
 2. Build the binary:
   ```shell
-  xk6 build --with github.com/Mistyrain520/xk6-zap@latest
+  xk6 build v2.0.0 --with github.com/Mistyrain520/xk6-zap/v2@v2.0.2
   ```
 
 
@@ -35,8 +41,7 @@ Then:
 // script.js
 import zaplogger from 'k6/x/zaplogger';
 import { sleep } from 'k6';
-//如果要所有VU写入一个文件，建议这里先加一个infow。测试过程发现如果这个test.log不存在的话，并发写入同个文件有出现文件被进程占用的风险，导致写入不全。
-//这里是属于k6生命周期的初始化阶段。
+// Multiple VUs can safely share the same log file.
 const mylogger = zaplogger.initLogger("./test.log")
 mylogger.infow("msg", "key1", `start`)
 export default function () { 
@@ -44,7 +49,7 @@ export default function () {
   mylogger.infow("key", "gagga", "key1", "values1")
   sleep(5)
   }
-//如果不同VU写入不同文件，建议把mylogger写入到各自的场景里。比如这个例子，这样子就没有任何问题。
+// Different VUs can also use different files.
 // export default function () { 
 //  const mylogger = zaplogger.initLogger("./test" +`${exec.vu.idInTest}` +".log")
 //   mylogger.infow("msg", "key", "gagga")
@@ -53,6 +58,7 @@ export default function () {
 //   }
 export function teardown() {
   mylogger.sync()
+  zaplogger.closeAll()
 }
 ```
 
@@ -93,5 +99,49 @@ Then you can see that a file is generated locally
 ```
 
 
-## TUDO
-- [ ] 文件不存在的时候，并发写入有问题；文件如果已经存在了，就没问题。奇怪
+## Fixed: concurrent logging and rotation
+
+`initLogger()` shares one managed writer for each canonical file path.
+Concurrent VUs can safely create the same file and rotate it without opening
+competing file handles or racing on backup names.
+
+Call `zaplogger.closeAll()` in `teardown()` to release all file handles:
+
+```javascript
+export function teardown() {
+  zaplogger.closeAll()
+}
+```
+
+## Verify concurrency and rotation
+
+Build a k6 binary containing only this local extension:
+
+```powershell
+xk6 build v2.0.0 `
+  --output .\k6-zap.exe `
+  --with 'github.com/Mistyrain520/xk6-zap/v2=D:\github\xk6-zap'
+```
+
+Run the first-creation or existing-file test:
+
+```powershell
+$env:VUS = '256'
+$env:TARGET = 'D:\github\xk6-zap\shared.log'
+.\k6-zap.exe run --quiet .\examples\concurrent_shared_file.js
+```
+
+Force rotation with a 1 MB limit and a larger payload:
+
+```powershell
+$env:VUS = '512'
+$env:MAX_SIZE = '1'
+$env:MAX_BACKUPS = '20'
+$env:MAX_AGE = '1'
+$env:PAYLOAD_SIZE = '4096'
+$env:TARGET = 'D:\github\xk6-zap\rotating.log'
+.\k6-zap.exe run --quiet .\examples\concurrent_shared_file.js
+```
+
+Each JSON line contains `"msg":"concurrent-write"` and a unique `worker`.
+The total unique workers across the current and rotated files must equal `VUS`.

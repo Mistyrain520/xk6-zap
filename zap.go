@@ -1,12 +1,9 @@
 package zaplogger
 
 import (
-	"os"
-
 	"go.k6.io/k6/v2/js/modules"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // init is called by the Go runtime at application startup.
@@ -49,37 +46,25 @@ func (zaplogger *ZapLogger) Exports() modules.Exports {
 	return modules.Exports{Default: zaplogger}
 }
 func (z *ZapLogger) InitLogger(path string, overwrite bool, args ...int) *zap.SugaredLogger {
-	// MaxSize:    500, // megabytes
-	// MaxBackups: 3,
-	// MaxAge:     28, // days
 	defaultArgs := []int{500, 3, 28}
 	for i := len(args); i < len(defaultArgs); i++ {
 		args = append(args, defaultArgs[i])
 	}
 
-	// 如果 overwrite 为 true，则清空文件内容
-	if overwrite {
-		err := os.Truncate(path, 0)
-		if err != nil && !os.IsNotExist(err) {
-			// 如果文件不存在，lumberjack 会自动创建，所以忽略该错误
-			// 其他错误可以选择记录日志或处理
-		}
-	}
-
-	writeSyncer := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   path,
+	config := writerConfig{
 		MaxSize:    args[0],
 		MaxBackups: args[1],
 		MaxAge:     args[2],
-	})
-	encoder := getEncoder()
-	// core := zapcore.NewCore(encoder, safeW, zapcore.NewMultiWriteSyncer(writeSyncer, zapcore.AddSync(os.Stdout)), zapcore.DebugLevel)
-	//不在控制台输出，去掉zapcore.AddSync(os.Stdout)
-	core := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(writeSyncer), zapcore.DebugLevel)
+	}
+	return getSharedLogger(path, overwrite, config)
+}
 
-	logger := zap.New(core)
-	sugarLogger := logger.Sugar()
-	return sugarLogger
+func (z *ZapLogger) CloseLogger(path string) error {
+	return closeSharedLogger(path)
+}
+
+func (z *ZapLogger) CloseAll() int {
+	return closeAllSharedLoggers()
 }
 func getEncoder() zapcore.Encoder {
 	encoderConfig := zap.NewProductionEncoderConfig()
